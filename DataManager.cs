@@ -262,7 +262,6 @@ namespace OrderOnline
                     {
                         if (reader.Read())
                         {
-                            connection.Close();
                             string localPassword = reader.GetString(3);
                             if (localPassword != password)
                             {
@@ -273,17 +272,19 @@ namespace OrderOnline
                                     Message = "Invalid Password."
                                 };
                             }
-                            return new Result
+                            var data = new UserResult
+                            {
+                                Id = reader.GetInt32(0),
+                                PhoneNumber = reader.GetString(1),
+                                Name = reader.GetString(2),
+                                Adress = reader.GetString(4),
+                            };
+                            connection.Close();
+                            return new ResultWithDataAndToken<UserResult>
                             {
                                 Success = true,
                                 Code = 200,
-                                Data = new
-                                {
-                                    id = reader.GetInt32(0),
-                                    phoneNumber = reader.GetString(1),
-                                    name = reader.GetString(2),
-                                    adress = reader.GetString(4),
-                                }
+                                Data = data
                             };
                         }
                         else
@@ -297,6 +298,53 @@ namespace OrderOnline
                             };
                         }
                     }
+                }
+            }
+        }
+
+        public static string GetRefreshToken(string phoneNumber)
+        {
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                string selectSql = "SELECT * FROM Users WHERE PhoneNumber = @PhoneNumber";
+                using (var command = new SqliteCommand(selectSql, connection))
+                {
+                    command.Parameters.AddWithValue("@PhoneNumber", phoneNumber);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string refreshToken = reader.GetString(5);
+                            connection.Close();
+                            return refreshToken;
+                        }
+                        else
+                        {
+                            connection.Close() ;
+                            return null;
+                        }
+                    }
+                }
+            }
+                return "";
+        }
+
+        public static void WriteRefreshToken(string phoneNumber ,string refreshToken)
+        {
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                string updateSql = "UPDATE Users SET RefreshToken = @NewRefreshToken WHERE PhoneNumber = @PhoneNumber";
+                using (var command = new SqliteCommand(updateSql, connection))
+                {
+                    command.Parameters.AddWithValue("@NewRefreshToken", refreshToken);
+                    command.Parameters.AddWithValue("@PhoneNumber", phoneNumber);
+
+                    command.ExecuteNonQuery();
+                    connection.Close();
                 }
             }
         }

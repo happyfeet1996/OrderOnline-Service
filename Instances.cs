@@ -52,6 +52,15 @@ namespace OrderOnline
         public string Name { get; set; }
         public string Password { get; set; }
         public string Adress { get; set; }
+        public string? RefreshToken { get; set; }
+    }
+
+    public class UserResult
+    {
+        public int Id { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Name { get; set; }
+        public string Adress { get; set; }
     }
 
     public class UserDto
@@ -66,8 +75,24 @@ namespace OrderOnline
     {
         public int Code { get; set; }
         public string? Message { get; set; }
-        public dynamic? Data { get; set; }
         public bool Success { get; set; }
+    }
+
+    public class ResultWithData<T>: Result
+    {
+        public T? Data { get; set; }
+    }
+
+    public class ResultWithDataAndToken<T>: Result
+    {
+        public T? Data { get; set; }
+        public string? Token { get; set; }
+        public string? RefreshToken { get; set; }
+    }
+
+    public class ResultWithToken: Result
+    {
+        public string? Token { get; set; }
     }
 
 }
