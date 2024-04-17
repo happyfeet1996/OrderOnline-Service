@@ -15,8 +15,9 @@ namespace OrderOnline
         private string dbConnection;
 
         public DbSet<Commodity> Commodities { get; set; }
-
         public DbSet<User> Users { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderDetails> OrderDetails { get; set; }
 
         public AppDbContext(string dbConnection) : base()
         {
@@ -58,9 +59,25 @@ namespace OrderOnline
             if (dbPath == null)
             {
                 Console.WriteLine("Database Path is Null!");
-                dbPath = "";
+                dbPath = Path.Combine(Directory.GetCurrentDirectory(), "Order.db"); ;
             }
             return dbPath;
+        }
+
+        public static string GetImagesPath()
+        {
+            var builder = new ConfigurationBuilder().AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            IConfigurationRoot configuration = builder.Build();
+
+            var iamgePath = configuration["ImagesPath"];
+
+            if (iamgePath == null)
+            {
+                Console.WriteLine("Images Path is Null!");
+                iamgePath = Path.Combine(Directory.GetCurrentDirectory(), "Images"); 
+            }
+            return iamgePath;
         }
     }
 
@@ -344,6 +361,59 @@ namespace OrderOnline
                     command.Parameters.AddWithValue("@PhoneNumber", phoneNumber);
 
                     command.ExecuteNonQuery();
+                    connection.Close();
+                }
+            }
+        }
+    }
+
+    public class OrdersManager
+    {
+        public static string AddOrder(int userId, Order order, List<OrderDetailsDto> orderDetails)
+        {
+            string guid = Guid.NewGuid().ToString() + userId.ToString();
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                order.Id = guid;
+                connection.Open();
+                string insertSql = "INSERT INTO Orders (Id, Status, CustomerId, Date) VALUES (@Id, @Status, @CustomerId, @Date)";
+                using (var command = new SqliteCommand(insertSql, connection))
+                {
+                    command.Parameters.AddWithValue("@Id", order.Id);
+                    command.Parameters.AddWithValue("@Status", order.Status);
+                    command.Parameters.AddWithValue("@CustomerId", order.CustomerId);
+                    command.Parameters.AddWithValue("@Date", order.Date);
+                    command.ExecuteNonQuery();
+                }
+                string insertOrderDetail = "INSERT INTO OrderDetails (OrderId, CommodityId, Count) VALUES (@OrderId, @CommodityId, @Count)";
+                    orderDetails.ForEach(o =>
+                    {
+                        using (var command2 = new SqliteCommand(insertOrderDetail, connection))
+                        {
+                            command2.Parameters.AddWithValue("@OrderId", guid);
+                            command2.Parameters.AddWithValue("@CommodityId", o.CommodityId);
+                            command2.Parameters.AddWithValue("@Count", o.Count);
+                            command2.ExecuteNonQuery();
+                        }
+                    });
+                    connection.Close();
+            }
+            return guid;
+        }
+
+        public static void ModifyOrderStatus(OrderStatus status, string orderId)
+        {
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                string updateSql = "UPDATE Orders SET Status = @Status WHERE Id = @Id";
+                using(var updateCommand = new SqliteCommand(updateSql, connection))
+                {
+                    updateCommand.Parameters.AddWithValue("@Status", status);
+                    updateCommand.Parameters.AddWithValue("@Id", orderId);
+                    updateCommand.ExecuteNonQuery();
                     connection.Close();
                 }
             }

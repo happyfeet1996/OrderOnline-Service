@@ -18,7 +18,7 @@ namespace OrderOnline.Controllers
 
         [HttpPost]
         [Route("addCommodity")]
-        public IActionResult Post([FromQuery] CommodityDto commodityDto)
+        public IActionResult Post([FromBody] CommodityDto commodityDto)
         {
             var commodity = new Commodity 
             { 
@@ -42,7 +42,7 @@ namespace OrderOnline.Controllers
 
         [HttpPost]
         [Route("modifyCommodity")]
-        public IActionResult Post([FromQuery] CommodityDto2 commodityDto)
+        public IActionResult Post([FromBody] CommodityDto2 commodityDto)
         {
             var commodity = new Commodity
             {
@@ -92,6 +92,51 @@ namespace OrderOnline.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost]
+        [Route("uploadImage")]
+        public async Task<IActionResult> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("No file uploaded.");
+            }
+            try
+            {
+                string uploadsFolder = DataManager.GetImagesPath();
+                Directory.CreateDirectory(uploadsFolder);
+
+                // 生成唯一文件名
+                string uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+
+                // 保存文件到服务器文件系统中
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+                return Ok(new { filePath });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpGet]
+        [Route("getImage")]
+        public IActionResult GetImage(string imagePath)
+        {
+            try
+            {
+                var imageBytes = System.IO.File.ReadAllBytes(imagePath);
+                return File(imageBytes, "image/" + imagePath.Split(".").Last()); // 返回图片文件
+            }
+            catch (Exception ex)
+            {
+                return NotFound();
             }
         }
     }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OrderOnline;
@@ -6,12 +7,14 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // Add services to the container.
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 
 builder.Services.AddSwaggerGen(c =>
@@ -69,7 +72,9 @@ builder.Services.AddAuthentication(x =>
     };
 });
 
-builder.Services.AddDistributedMemoryCache();  //¿ªÆô»º´æ£¬AddSession±ØÐë
+builder.Services.AddMemoryCache();
+
+/*builder.Services.AddDistributedMemoryCache();  //¿ªÆô»º´æ£¬AddSession±ØÐë
 builder.Services.AddSession(option =>
 {
     option.Cookie.SameSite = SameSiteMode.None;
@@ -77,6 +82,19 @@ builder.Services.AddSession(option =>
     option.IdleTimeout = TimeSpan.FromMinutes(3);
     option.Cookie.HttpOnly = true;
     option.Cookie.IsEssential = true;
+});*/
+
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    options.ListenAnyIP(5000);
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAnyOrigin", builder =>
+    {
+        builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    });
 });
 
 var app = builder.Build();
@@ -101,7 +119,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseSession();
+/*app.UseSession();*/
 
 app.UseAuthentication();
 
@@ -110,6 +128,8 @@ app.UseAuthorization();
 app.MapControllers();
 
 DataManager.CheckDBExist();
+
+app.UseCors("AllowAnyOrigin");
 /*Encrypt.MakeRSAKey();
 */
 app.Run();

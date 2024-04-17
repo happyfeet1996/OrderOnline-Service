@@ -65,10 +65,12 @@ namespace OrderOnline
 
     public class UserDto
     {
+        public string captchaId { get; set; }
         public string PhoneNumber { get; set; }
         public string Name { get; set; }
         public string Password { get; set; }
         public string Adress { get; set; }
+        public string captcha {  get; set; }
     }
 
     public class Result
@@ -93,6 +95,35 @@ namespace OrderOnline
     public class ResultWithToken: Result
     {
         public string? Token { get; set; }
+    }
+
+    public enum OrderStatus
+    {
+        New = 0,
+        Processing = 1,
+        Finished = 2,
+        Canceled = 3
+    }
+
+    public class Order { 
+        public string Id { get; set; }
+        public OrderStatus Status { get; set; }
+        public int CustomerId { get; set; }
+        public DateTime Date {  get; set; }
+    }
+
+    public class OrderDetails
+    {
+        public int Id { get; set; }
+        public string OrderId { get; set; }
+        public int CommodityId { get; set; }
+        public decimal Count { get; set; }
+    }
+
+    public class OrderDetailsDto
+    {
+        public int CommodityId { get; set; }
+        public decimal Count { get; set; }
     }
 
 }
