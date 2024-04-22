@@ -48,9 +48,9 @@ namespace OrderOnline.Controllers
                 string pn = (checkRes as ResultWithDataAndToken<UserResult>).Data.PhoneNumber;
                 var claims = new[]
                 {
-                new Claim(ClaimTypes.MobilePhone, pn),
-                new Claim(ClaimTypes.Role, "")
-            };
+                    new Claim(ClaimTypes.MobilePhone, pn),
+                    new Claim(ClaimTypes.Role, "user")
+                };
                 string token = GenerateToken(claims);
                 string refreshToken = GenerateRefreshToken(phoneNumber);
                 (checkRes as ResultWithDataAndToken<UserResult>).Token = token;
@@ -64,6 +64,41 @@ namespace OrderOnline.Controllers
                 Code = 501,
                 Success = false,
             });
+        }
+
+        [HttpGet]
+        [Route("managerToken")]
+        public ActionResult GetManagerToken(string userName, string password, string captchaId, string captcha)
+        {
+            if (_cache.TryGetValue(captchaId + "_MLCaptcha", out string value))
+            {
+                if(captcha != value)
+                {
+                    return BadRequest(new Result
+                    {
+                        Code = 503,
+                        Success = false,
+                        Message = "Invalid captcha."
+                    });
+                }
+                Result checkRes = UsersManager.CheckAdminLogin(userName, password);
+                _cache.Remove(captchaId + "_MLCaptcha");
+                if (!checkRes.Success)
+                {
+                    return Ok(checkRes);
+                }
+                var claims = new[]
+                {
+                    new Claim(ClaimTypes.Name, userName),
+                    new Claim(ClaimTypes.Role, "admin")
+                };
+                string token = GenerateToken(claims);
+                string refreshToken = GenerateAdminRefreshToken(userName);
+                (checkRes as ResultWithDataAndToken<AdminResult>).Token = token;
+                (checkRes as ResultWithDataAndToken<AdminResult>).RefreshToken = refreshToken;
+                return Ok(checkRes);
+            }
+            return Unauthorized() ;
         }
 
         private static string GenerateToken(Claim[] claims)
@@ -81,6 +116,15 @@ namespace OrderOnline.Controllers
             string guid = newGuid.ToString();
             string refreshToken = guid + "_" + phoneNumber;
             UsersManager.WriteRefreshToken(phoneNumber, refreshToken);
+            return refreshToken;
+        }
+
+        private static string GenerateAdminRefreshToken(string userName)
+        {
+            Guid newGuid = Guid.NewGuid();
+            string guid = newGuid.ToString();
+            string refreshToken = guid + "_" + userName;
+            UsersManager.WriteAdminRefreshToken(userName, refreshToken);
             return refreshToken;
         }
 
@@ -102,7 +146,7 @@ namespace OrderOnline.Controllers
             var claims = new[]
             {
                 new Claim(ClaimTypes.MobilePhone, phoneNumber),
-                new Claim(ClaimTypes.Role, "")
+                new Claim(ClaimTypes.Role, "user")
             };
             // 生成新的 token
             string newToken = GenerateToken(claims);
@@ -112,8 +156,34 @@ namespace OrderOnline.Controllers
         }
 
         [HttpGet]
+        [Route("refreshAdminToken")]
+        public ActionResult GetAdminRefreshToken(string oldToken, string refreshToken)
+        {
+            var principal = GetPrincipalFromExpiredToken(oldToken);
+            var userName = principal.Claims.ElementAt(0).Value;
+            var role = principal.Claims.ElementAt(1).Value;
+            if(role != "admin")
+            {
+                return Forbid();
+            }
+            var refreshTokenRes = UsersManager.GetAdminRefreshToken(userName);
+            if(refreshToken != refreshTokenRes)
+            {
+                return Unauthorized(new { message = "Invalid token" });
+            }
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.Name, userName),
+                new Claim(ClaimTypes.Role, "admin")
+            };
+            string newToken = GenerateToken(claims);
+            string newRefreshToken = GenerateAdminRefreshToken(userName);
+            return Ok(new { token = newToken, refreshToken = newRefreshToken });
+        }
+
+        [HttpGet]
         [Route("getCaptcha")]
-        public IActionResult GetCaptcha(string captchaId, int width, int height, int count)
+        public ActionResult GetCaptcha(string captchaId, int width, int height, int count)
         {
             try
             {
@@ -133,8 +203,29 @@ namespace OrderOnline.Controllers
         }
 
         [HttpGet]
+        [Route("getManagerLoginCaptcha")]
+        public ActionResult GetManagerLoginCaptcha(string captchaId, int width, int height, int count)
+        {
+            try
+            {
+                CaptchaGenerator generator = new CaptchaGenerator();
+                string captchaText = generator.GenerateRandomText(count);
+                string captchaStr = generator.GenerateCaptcha(width, height, captchaText);
+                _cache.Remove(captchaId + "_MLCaptcha");
+                _cache.Set(captchaId + "_MLCaptcha", captchaText, TimeSpan.FromMinutes(3));
+                /*HttpContext.Session.Remove(captchaId + "_Captcha");
+                HttpContext.Session.SetString(captchaId + "_Captcha", captchaText);*/
+                return Ok(new { src = $"data:image/png;base64,{captchaStr}" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet]
         [Route("getRegisterCaptcha")]
-        public IActionResult GetRegisterCaptcha(string captchaId, int width, int height, int count)
+        public ActionResult GetRegisterCaptcha(string captchaId, int width, int height, int count)
         {
             try
             {
@@ -155,7 +246,7 @@ namespace OrderOnline.Controllers
 
         [HttpPost]
         [Route("registerUser")]
-        public IActionResult PostRegisterUser([FromBody] UserDto userDto)
+        public ActionResult PostRegisterUser([FromBody] UserDto userDto)
         {
             /*var localCaptcha = HttpContext.Session.GetString(userDto.captchaId + "_RCaptcha");*/
             if (_cache.TryGetValue(userDto.captchaId + "_RCaptcha", out string value))

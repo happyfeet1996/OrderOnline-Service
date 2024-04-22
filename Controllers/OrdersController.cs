@@ -8,7 +8,7 @@ namespace OrderOnline.Controllers
     {
         [HttpPost]
         [Route("addOrder")]
-        public IActionResult PostAddOrder([FromForm] int userId, OrderStatus orderStatus, DateTime date, List<OrderDetailsDto> orderDetailses)
+        public ActionResult PostAddOrder([FromForm] int userId, OrderStatus orderStatus, DateTime date, List<OrderDetailsDto> orderDetailses)
         {
             try
             {
@@ -27,7 +27,7 @@ namespace OrderOnline.Controllers
 
         [HttpPost]
         [Route("modifyOrderStatus")]
-        public IActionResult PostModifyOrderStatus([FromForm] string orderId, OrderStatus status)
+        public ActionResult PostModifyOrderStatus([FromForm] string orderId, OrderStatus status)
         {
             try
             {

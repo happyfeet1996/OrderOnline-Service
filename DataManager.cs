@@ -18,6 +18,7 @@ namespace OrderOnline
         public DbSet<User> Users { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderDetails> OrderDetails { get; set; }
+        public DbSet<Admin> Admins { get; set; }
 
         public AppDbContext(string dbConnection) : base()
         {
@@ -319,6 +320,59 @@ namespace OrderOnline
             }
         }
 
+        public static Result CheckAdminLogin(string userName, string password)
+        {
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+
+                string selectSql = "SELECT * FROM Admins WHERE UserName = @UserName";
+                using (var command = new SqliteCommand(selectSql, connection))
+                {
+                    command.Parameters.AddWithValue("@UserName", userName);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string localPassword = reader.GetString(2);
+                            if (localPassword != password)
+                            {
+                                return new Result
+                                {
+                                    Code = 501,
+                                    Success = false,
+                                    Message = "Invalid Password."
+                                };
+                            }
+                            var data = new AdminResult
+                            {
+                                Id = reader.GetInt32(0),
+                                UserName = reader.GetString(1)
+                            };
+                            connection.Close();
+                            return new ResultWithDataAndToken<AdminResult>
+                            {
+                                Success = true,
+                                Code = 200,
+                                Data = data
+                            };
+                        }
+                        else
+                        {
+                            connection.Close();
+                            return new Result
+                            {
+                                Code = 503,
+                                Success = false,
+                                Message = "Invalid UserName."
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
         public static string GetRefreshToken(string phoneNumber)
         {
             var dbPath = DataManager.GetDBPath();
@@ -345,7 +399,34 @@ namespace OrderOnline
                     }
                 }
             }
-                return "";
+        }
+
+        public static string GetAdminRefreshToken(string userName)
+        {
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                string selectSql = "SELECT * FROM Admins WHERE UserName = @UserName";
+                using (var command = new SqliteCommand(selectSql, connection))
+                {
+                    command.Parameters.AddWithValue("@UserName", userName);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string refreshToken = reader.GetString(3);
+                            connection.Close();
+                            return refreshToken;
+                        }
+                        else
+                        {
+                            connection.Close();
+                            return null;
+                        }
+                    }
+                }
+            }
         }
 
         public static void WriteRefreshToken(string phoneNumber ,string refreshToken)
@@ -365,6 +446,25 @@ namespace OrderOnline
                 }
             }
         }
+
+        public static void WriteAdminRefreshToken(string userName, string refreshToken)
+        {
+            var dbPath = DataManager.GetDBPath();
+            using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                string updateSql = "UPDATE Admins SET RefreshToken = @NewRefreshToken WHERE UserName = @UserName";
+                using (var command = new SqliteCommand(updateSql, connection))
+                {
+                    command.Parameters.AddWithValue("@NewRefreshToken", refreshToken);
+                    command.Parameters.AddWithValue("@UserName", userName);
+
+                    command.ExecuteNonQuery();
+                    connection.Close();
+                }
+            }
+        }
+
     }
 
     public class OrdersManager

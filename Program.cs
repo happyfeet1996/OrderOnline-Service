@@ -121,6 +121,8 @@ app.UseHttpsRedirection();
 
 /*app.UseSession();*/
 
+app.UseCors("AllowAnyOrigin");
+
 app.UseAuthentication();
 
 app.UseAuthorization();

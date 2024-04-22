@@ -6,19 +6,19 @@ namespace OrderOnline.Controllers
 {
     [Route("api/commoditiesManager")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class CommoditiesManagerController : ControllerBase
     {
         [HttpGet]
         [Route("checkName")]
-        public IActionResult Get(string name)
+        public ActionResult Get(string name)
         {
             return Ok(CommoditiesManager.CheckName(name));
         }
 
         [HttpPost]
         [Route("addCommodity")]
-        public IActionResult Post([FromBody] CommodityDto commodityDto)
+        public ActionResult Post([FromBody] CommodityDto commodityDto)
         {
             var commodity = new Commodity 
             { 
@@ -42,7 +42,7 @@ namespace OrderOnline.Controllers
 
         [HttpPost]
         [Route("modifyCommodity")]
-        public IActionResult Post([FromBody] CommodityDto2 commodityDto)
+        public ActionResult Post([FromBody] CommodityDto2 commodityDto)
         {
             var commodity = new Commodity
             {
@@ -67,7 +67,7 @@ namespace OrderOnline.Controllers
 
         [HttpDelete]
         [Route("deleteCommodity")]
-        public IActionResult Delete(int id)
+        public ActionResult Delete(int id)
         {
             try
             {
@@ -82,7 +82,7 @@ namespace OrderOnline.Controllers
 
         [HttpGet]
         [Route("getCommodities")]
-        public IActionResult Get(int skip, int limit) 
+        public ActionResult Get(int skip, int limit) 
         {
             try
             {
@@ -127,7 +127,7 @@ namespace OrderOnline.Controllers
 
         [HttpGet]
         [Route("getImage")]
-        public IActionResult GetImage(string imagePath)
+        public ActionResult GetImage(string imagePath)
         {
             try
             {
